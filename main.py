@@ -1,7 +1,7 @@
 import pygame
 import math
 from queue import PriorityQueue
-
+from heapq import heappush, heappop
 
 # Colores
 GRAY = (200, 200, 200)
@@ -30,10 +30,17 @@ class Main:
 
         # Tamaño inicial del botón (se recalculará en `update_layout`)
         self.btn_dijstra = Button(x=0, y=0, width=0, height=0, text="Dijkstra", font=font, bg_color=GRAY, text_color=BLACK)
-        self.grid = Grid(200, 200, cell_size=20)
+        width, height = self.screen.get_size()
+        self.grid = Grid(width, height, cell_size=20)
 
         # Flag to track the current mode (Menu or Grid)
         self.in_menu = True
+
+        self.start_node = False
+        self.end_node = False
+
+
+        self.choosed_algoritmo = ""
 
         # Configurar elementos en función del tamaño de la ventana
         self.update_layout(*self.screenDim)
@@ -62,11 +69,49 @@ class Main:
                     self.screen = pygame.display.set_mode((e.w, e.h), pygame.RESIZABLE)
                     width, height = self.screen.get_size()
                     self.grid.update_dimensions(width, height)
+                    self.start_node = False
+                    self.end_node = False
 
                 print(f"New window size: {window_width}x{window_height}")
+            
+            if pygame.mouse.get_pressed()[0]: # LEFT mouse button
+                mouse_x, mouse_y = e.pos  # Get the mouse click position
+                print(f"Mouse clicked at position: ({mouse_x}, {mouse_y})")
+
+                if not self.in_menu:  # Only handle grid clicks if not in the menu
+                    # Calculate the grid cell coordinates (row, col)
+                    col = mouse_x // self.grid.cell_size
+                    row = mouse_y // self.grid.cell_size
+
+                    # Check if the click is within grid bounds
+                    if 0 <= row < self.grid.rows and 0 <= col < self.grid.cols:
+                        # clicked_square = self.grid.grid[row][col]
+                        if self.start_node == False:
+                            self.start_node = True
+                            self.grid.grid[row][col].color = BLUE  # Change color to BLUE = START
+                        elif self.end_node == False and self.grid.grid[row][col].color != BLUE :
+                            self.end_node = True
+                            self.grid.grid[row][col].color = ORANGE  # Change color to ORANGE = end
+
+
+            if pygame.mouse.get_pressed()[2]: # RIGHT mouse button    
+                mouse_x, mouse_y = e.pos  # Get the mouse click position
+                print(f"Mouse clicked at position: ({mouse_x}, {mouse_y})")
+
+                if not self.in_menu:  # Only handle grid clicks if not in the menu
+                    # Calculate the grid cell coordinates (row, col)
+                    col = mouse_x // self.grid.cell_size
+                    row = mouse_y // self.grid.cell_size
+
+                    # Check if the click is within grid bounds
+                    if 0 <= row < self.grid.rows and 0 <= col < self.grid.cols:
+                        # clicked_square = self.grid.grid[row][col]
+                        self.grid.grid[row][col].color = BLACK  # Change color to BLUE = START
+           
 
             if self.btn_dijstra.is_clicked(e) and self.in_menu:
                 print("Clicked Dijkstra")
+                self.choosed_algoritmo = "dijkstra"
                 self.in_menu = False  # Cambiar al modo de grilla
 
     def update_layout(self, window_width, window_height):
@@ -85,8 +130,6 @@ class Main:
             self.btn_dijstra.draw(self.screen)
         else:
             # Dibujar la grilla
-            width, height = self.screen.get_size()
-            self.grid.update_dimensions(width,height)
             self.grid.draw(self.screen)
 
 
@@ -102,7 +145,24 @@ class Main:
             self.update(dt)
             self.draw()
 
-            pygame.display.flip()
+            # pygame.display.flip()
+            pygame.display.update()
+
+
+class Dijkstra:
+    def __init__(self,grid,start_node,end_node):
+        self.grid = grid
+        self.start_node = start_node
+        self.end_node = end_node
+        self.distances = {}
+        self.parents = {}
+        self.visited = set()
+        self.priority_queue = PriorityQueue()
+
+
+    def run(self):
+        pass
+
 
 
 class Square:
@@ -119,7 +179,7 @@ class Square:
         self.y = row * width  # Corrected for row-based positioning
 
         self.color = WHITE
-        self.state = 0  # 0: walkable, 1: obstacle, etc.
+        self.state = 0 
   
 # 0: Empty space (walkable).
 # 1: Obstacle (non-walkable).
@@ -149,11 +209,10 @@ class Square:
         return self.color == BLACK
 
     def draw(self, win):
-       
         self.rect = pygame.draw.rect(win, self.color, (self.x, self.y, self.width, self.width))
 
     def __str__(self):
-        return f"Square(row={self.row}, col={self.col})"
+        return f"Square(row={self.row}, col={self.col}), color = {self.color}"
     
 
 class Grid:
@@ -190,8 +249,7 @@ class Grid:
                 pygame.draw.rect(screen, GREY, self.grid[row][col].rect, 1)  # Borde de la celda
 
                 
-        
-
+    
 class Button:
     def __init__(self, x, y, width, height, text, font, bg_color, text_color):
         self.rect = pygame.Rect(x, y, width, height)
