@@ -75,7 +75,8 @@ class Main:
                             self.gbfs = GreedyBestfirstSearch(self.grid, self.start_node, self.end_node)
                             self.gbfs.initialize()
                         elif self.choosed_algoritmo == "Astar":
-                            pass
+                            self.astar = Astar(self.grid, self.start_node, self.end_node)
+                            self.astar.initialize()
 
             # elif e.type == pygame.MOUSEBUTTONDOWN:
             #     mouse_x, mouse_y = e.pos  # Obtener la posición del clic
@@ -163,6 +164,8 @@ class Main:
             self.dijkstra.run()
         if not self.in_menu and hasattr(self, 'gbfs') and not self.gbfs.finished:
             self.gbfs.run()
+        if not self.in_menu and hasattr(self, 'astar') and not self.astar.finished:
+            self.astar.run()
         
 
     def draw(self):
@@ -191,6 +194,106 @@ class Main:
             # pygame.display.flip()
             pygame.display.update()
 
+class Astar:
+    def __init__(self,grid, start_node, end_node):
+        self.grid = grid
+        self.start_node = start_node # The start node
+        self.end_node = end_node # the end node
+        self.parents = {} # this is directory of the previos nodes, in other words the parents of the nodes visited, with this we will know the shortest path
+        self.distances = {} # distances to nodes, every distance is 1 and that will be adding up till we find the end node
+        self.visited = set() # a set o nodes that were visited, they cannot be repeated
+        self.priority_queue = PriorityQueue() # data structure where it prioristse the node with the smaller distances
+        self.in_queue = set()
+        self.finished = False  # Flag to indicate if the algorithm is complete
+        self.current_path = []  # Store the shortest path
+        self.int = 1
+    
+    def initialize(self):
+        # Initialize distances and parents
+        for row in self.grid.grid:
+            for square in row:
+                self.distances[square] = float('inf')  # Start with infinity
+                self.parents[square] = None  # No parent initially
+
+        self.priority_queue.put((0,self.int, self.start_node)) # when initialize we put the only node we have the start node
+        self.distances[self.start_node] = 0 # the first distance is always zero because from start node to start node is 0
+        self.in_queue.add(self.start_node)
+        self.int += 1
+
+
+    def run(self):
+        if not self.priority_queue.empty(): # if the priority queue is not empty run the lagorithm
+            _, _, removed_node = self.priority_queue.get() # this a pop of the queue, we remove the priority node, with some information like distance and the node
+            self.in_queue.remove(removed_node)
+
+
+            # Mark as visited
+            if removed_node != self.start_node and removed_node != self.end_node: # this is only to not over paint the important nodes
+                removed_node.make_visited() # change color of the square to a red, it means that node was visited
+
+            self.visited.add(removed_node) # we added it to the set of visited nodes
+
+             # Stop the algorithm if we reach the end_node
+            if removed_node == self.end_node: 
+                self.reconstruct_path()
+                self.finished = True
+                # if we reach the end node there is no reason to keep searching a short path beacause you would not find it
+                return
+            
+
+            for neighbor in removed_node.neighbors: # here we check all the neighbors node of the priority node we are analising
+                if neighbor in self.visited or neighbor.is_barrier(): # if the neighbors was already visited or the node is a barrier we skip it
+                    continue
+
+                # Calculate the new distance (g(neighbor))
+                new_distance = self.distances[removed_node] + 1  # Assuming all edges have weight 1
+                
+                priority = self.heuristic(neighbor, self.end_node)
+                
+
+                if new_distance < self.distances[neighbor]:
+                    self.distances[neighbor] = new_distance
+                    self.parents[neighbor] = removed_node
+                    # Calculate f(n) = g(neighbor) + h(neighbor)
+                    priority = new_distance + self.heuristic(neighbor, self.end_node)
+
+
+                    if neighbor not in self.in_queue:
+                        self.parents[neighbor] = removed_node
+                        self.priority_queue.put((priority, self.int, neighbor))
+                        self.in_queue.add(neighbor)  # Mark as in queue
+                        self.int += 1
+                        if neighbor != self.start_node and neighbor != self.end_node:
+                            neighbor.make_in_queue()
+
+        else:
+            self.finished = True
+
+
+
+
+    def reconstruct_path(self):
+            """Reconstructs the shortest path by backtracking from the end_node."""
+            current = self.end_node
+            while current in self.parents:  # Backtrack the parents dictionary
+                parent = self.parents[current]
+                if parent is None:
+                    break
+                if parent != self.start_node:
+                    parent.make_path()  # Visualize the path
+                    self.current_path.append(parent)
+                current = parent
+
+
+
+
+
+    def heuristic(self,a, b):
+        # not manhattan distance
+        dx = abs(a.x - b.x)
+        dy = abs(a.y - b.y)
+        return max(dx, dy)  # Diagonal distance   
+
 
 class GreedyBestfirstSearch:
     def __init__(self,grid, start_node, end_node):
@@ -198,11 +301,13 @@ class GreedyBestfirstSearch:
         self.start_node = start_node # The start node
         self.end_node = end_node # the end node
         self.parents = {} # this is directory of the previos nodes, in other words the parents of the nodes visited, with this we will know the shortest path
+        
         self.visited = set() # a set o nodes that were visited, they cannot be repeated
         self.priority_queue = PriorityQueue() # data structure where it prioristse the node with the smaller distances
+        self.in_queue = set()
         self.finished = False  # Flag to indicate if the algorithm is complete
         self.current_path = []  # Store the shortest path
-      
+        self.int = 1
     
     def initialize(self):
         # Initialize distances and parents
@@ -210,13 +315,14 @@ class GreedyBestfirstSearch:
             for square in row:
                 self.parents[square] = None  # No parent initially
 
-        self.priority_queue.put((0,id(self.start_node), self.start_node)) # when initialize we put the only node we have the start node
-
+        self.priority_queue.put((0,self.int, self.start_node)) # when initialize we put the only node we have the start node
+        self.in_queue.add(self.start_node)
+        self.int += 1
 
     def run(self):
-        """Runs one step of Dijkstra's algorithm."""
         if not self.priority_queue.empty(): # if the priority queue is not empty run the lagorithm
-            removed_distance, _, removed_node = self.priority_queue.get() # this a pop of the queue, we remove the priority node, with some information like distance and the node
+            _, _, removed_node = self.priority_queue.get() # this a pop of the queue, we remove the priority node, with some information like distance and the node
+            self.in_queue.remove(removed_node)
 
             # Mark as visited
             if removed_node != self.start_node and removed_node != self.end_node: # this is only to not over paint the important nodes
@@ -234,26 +340,27 @@ class GreedyBestfirstSearch:
             for neighbor in removed_node.neighbors: # here we check all the neighbors node of the priority node we are analising
                 if neighbor in self.visited or neighbor.is_barrier(): # if the neighbors was already visited or the node is a barrier we skip it
                     continue
-
                 
                 priority = self.heuristic(neighbor, self.end_node)
 
-
-                if neighbor not in self.visited:
-                    print("vecino")
-                    self.parents[neighbor] = removed_node # we put the parent of the neighbor 
-                    self.priority_queue.put((priority, id(neighbor), neighbor)) # and we put the neighbor in the priority queue
-
-                    # Mark as in queue
+                if neighbor not in self.visited and neighbor not in self.in_queue and not neighbor.is_barrier():
+                    self.parents[neighbor] = removed_node
+                    self.priority_queue.put((priority, self.int, neighbor))
+                    self.in_queue.add(neighbor)  # Mark as in queue
+                    self.int += 1
                     if neighbor != self.start_node and neighbor != self.end_node:
                         neighbor.make_in_queue()
         else:
             self.finished = True
     
     def heuristic(self,a, b):
-        # Manhattan distance on a square grid
-        print(abs(a.x - b.x) + abs(a.y - b.y))
-        return abs(a.x - b.x) + abs(a.y - b.y)
+        # # Manhattan distance on a square grid
+        # return abs(a.x - b.x) + abs(a.y - b.y)
+
+        # not manhattan distance
+        dx = abs(a.x - b.x)
+        dy = abs(a.y - b.y)
+        return max(dx, dy)  # Diagonal distance
     
     def reconstruct_path(self):
         """Reconstructs the shortest path by backtracking from the end_node."""
@@ -268,9 +375,7 @@ class GreedyBestfirstSearch:
     
 
 
-class Astar:
-    def __init__(self):
-        pass
+
 
 
 class Dijkstra:
@@ -282,6 +387,7 @@ class Dijkstra:
         self.visited = set() # a set o nodes that were visited, they cannot be repeated
         self.distances = {} # distances to nodes, every distance is 1 and that will be adding up till we find the end node
         self.priority_queue = PriorityQueue() # data structure where it prioristse the node with the smaller distances
+        self.in_queue = set()
         self.finished = False  # Flag to indicate if the algorithm is complete
         self.current_path = []  # Store the shortest path
 
@@ -289,11 +395,11 @@ class Dijkstra:
         # Initialize distances and parents
         for row in self.grid.grid:
             for square in row:
-
                 self.distances[square] = float('inf')  # Start with infinity
                 self.parents[square] = None  # No parent initially
 
         self.priority_queue.put((0, id(self.start_node), self.start_node)) # when initialize we put the only node we have the start node
+        self.in_queue.add(self.start_node)
         self.distances[self.start_node] = 0 # the first distance is always zero because from start node to start node is 0
 
     
@@ -302,7 +408,7 @@ class Dijkstra:
         """Runs one step of Dijkstra's algorithm."""
         if not self.priority_queue.empty(): # if the priority queue is not empty run the lagorithm
             removed_distance, _, removed_node = self.priority_queue.get() # this a pop of the queue, we remove the priority node, with some information like distance and the node
-
+            self.in_queue.remove(removed_node)
             # Mark as visited
             if removed_node != self.start_node and removed_node != self.end_node: # this is only to not over paint the important nodes
                 removed_node.make_visited() # change color of the square to a red, it means that node was visited
@@ -322,11 +428,11 @@ class Dijkstra:
 
                 new_distance = removed_distance + 1 # we add 1 to the distance, every time we pass to another node the distance is one
 
-                if new_distance < self.distances[neighbor]: # here we check if the new calculated distance is lower than distance of the neighbor that could be infinity, or a smaller distance to that node
+                if new_distance < self.distances[neighbor] and neighbor not in self.in_queue: # here we check if the new calculated distance is lower than distance of the neighbor that could be infinity, or a smaller distance to that node
                     self.distances[neighbor] = new_distance # we overwrite the distance with the shorter distance
                     self.parents[neighbor] = removed_node # we put the parent of the neighbor 
                     self.priority_queue.put((new_distance, id(neighbor), neighbor)) # and we put the neighbor in the priority queue
-
+                    self.in_queue.add(neighbor)
                     # Mark as in queue
                     if neighbor != self.start_node and neighbor != self.end_node:
                         neighbor.make_in_queue()
