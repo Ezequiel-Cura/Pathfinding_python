@@ -6,7 +6,7 @@ from heapq import heappush, heappop
 # Colores
 GRAY = (200, 200, 200)
 RED = (255, 0, 0)
-BLUE = (0, 255, 0)
+GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -108,15 +108,18 @@ class Main:
                     # Check if the click is within grid bounds
                     if 0 <= row < self.grid.rows and 0 <= col < self.grid.cols:
                         # clicked_square = self.grid.grid[row][col]
-                        if self.start_node_bool == False:
+                        if self.start_node_bool == False and self.grid.grid[row][col].color != BLACK:
                             self.start_node_bool = True
-                            self.grid.grid[row][col].color = BLUE  # Change color to BLUE = START
+                            self.grid.grid[row][col].color = GREEN  # Change color to GREEN = START
                             self.start_node = self.grid.grid[row][col] 
 
-                        elif self.end_node_bool == False and self.grid.grid[row][col].color != BLUE :
+                        elif self.end_node_bool == False and self.grid.grid[row][col].color != GREEN and self.grid.grid[row][col].color != BLACK:
                             self.end_node_bool = True
                             self.grid.grid[row][col].color = ORANGE  # Change color to ORANGE = end
                             self.end_node = self.grid.grid[row][col] 
+                        
+                        elif  self.grid.grid[row][col].color == BLACK:
+                            self.grid.grid[row][col].color = WHITE
 
 
             if pygame.mouse.get_pressed()[2]: # RIGHT mouse button    
@@ -132,7 +135,6 @@ class Main:
                     if 0 <= row < self.grid.rows and 0 <= col < self.grid.cols:
                         # clicked_square = self.grid.grid[row][col]
                         self.grid.grid[row][col].color = BLACK  # Change color to BLUE = START
-           
 
             if self.btn_dijstra.is_clicked(e) and self.in_menu:
                 print("Clicked Dijkstra")
@@ -487,9 +489,15 @@ class Square:
         
     def is_barrier(self):
         return self.color == BLACK
+    
+    def is_start_node(self):
+        return self.color == GREEN
+    
+    def is_end_node(self):
+        return self.color == ORANGE
 
     def make_end(self):
-        self.color = BLUE
+        self.color = GREEN
 
     def make_barrier(self):
         self.color = BLACK
